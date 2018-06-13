@@ -37,6 +37,7 @@ class RPCError(Exception):
     def humanize(error):
         """Get friendly error string from steemd RPC response."""
         detail = error['message'] if 'message' in error else str(error)
+        code = error['code'] if 'code' in error else -1
 
         if 'data' not in error:
             name = 'error' # eg db_lock_error
@@ -51,40 +52,17 @@ class RPCError(Exception):
         else:
             name = 'error [unspecified:%s]' % str(error)
 
-        return "%s: `%s`" % (name, detail)
+        return "%s[%s]: `%s`" % (name, code, detail)
 
     @staticmethod
     def is_recoverable(error):
         """Check if error appears recoverable (e.g. network condition)"""
         assert 'message' in error, "missing error msg key: {}".format(error)
         assert 'code' in error, "missing error code key: {}".format(error)
-        message = error['message']
-        code = error['code']
-
-        # common steemd error
-        # {"code"=>-32003, "message"=>"Unable to acquire database lock"}
-        if message == 'Unable to acquire database lock':
-            return True
-
-        # rare steemd error
-        # {"code"=>-32000, "message"=>"Unknown exception",
-        #  "data"=>"0 exception: unspecified\nUnknown Exception\n[...]"}
-        if message == 'Unknown exception':
-            return True
-
-        # generic jussi error
-        # {'code': -32603, 'message': 'Internal Error', 'data': {
-        #    'error_id': 'c7a15140-f306-4727-acbd-b5e8f3717e9b',
-        #    'request': {'amzn_trace_id': 'Root=1-5ad4cb9f-...',
-        #      'jussi_request_id': None}}}
-        if message == 'Internal Error' and code == -32603:
-            return True
-
-        # jussi error (e.g. Timeout)
-        if message == 'Bad or missing upstream response' and code == 1100:
-            return True
-
-        return False
+        #message = error['message']
+        #code = error['code']
+        # assume all upstream errors are recoverable.
+        return True
 
 class RPCErrorFatal(RPCError):
     """Represents a structured steemd error which is not recoverable."""
